@@ -33,6 +33,7 @@ volatile boolean right = false;
 volatile boolean left = false;
 bool buttonPress = false;
 
+bool run = false;
 bool led_state = false;
 volatile int freq = 1720;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -88,6 +89,8 @@ void buttonPressed() {
   buttonPress = true;
 }
 void loop() {
+  // Events Checken
+  Eventhandling();
   // Clock
   countdown();
   // Display
@@ -96,29 +99,31 @@ void loop() {
 }
 
 void countdown() {
-  act_time = millis();
-  if (act_time - old_time >= delay_time) {
-    old_time = act_time;
-    led_state = !led_state;
-    digitalWrite(LED_BUILTIN, led_state);
-    //tone(8,freq,200);
-    sece = sece - 1;  // secundeneiner runterzählen
-    if (sece == -1) {
-      sece = 9;
-      secz = secz - 1;  // secundenzehner runterzählen
-       if (secz < 0) {
-         secz = 5;
-         sece = 9;
-         mine = mine - 1;
-         if (mine < 0) {
-           mine = 9;
-           minz = minz - 1;
-           if (minz < 0) {
-             minz = 5;
+  if (run == true){
+    act_time = millis();
+    if (act_time - old_time >= delay_time) {
+      old_time = act_time;
+      led_state = !led_state;
+      digitalWrite(LED_BUILTIN, led_state);
+      //tone(8,freq,200);
+      sece = sece - 1;  // secundeneiner runterzählen
+      if (sece == -1) {
+        sece = 9;
+        secz = secz - 1;  // secundenzehner runterzählen
+         if (secz < 0) {
+           secz = 5;
+           sece = 9;
+           mine = mine - 1;
+           if (mine < 0) {
+             mine = 9;
+             minz = minz - 1;
+             if (minz < 0) {
+               minz = 5;
+             }
            }
          }
        }
-    }
+     }
   }
 }
 
@@ -144,6 +149,10 @@ void Eventhandling(){
     left = false;
     ccw++;
     inc++;
+    if (run == false){
+      sece++;
+    }
+    
     // switch(page){
     //   case 1:
     //   menuitem--;
@@ -162,6 +171,10 @@ void Eventhandling(){
     right = false;
     cw++;
     inc--;
+    if (run == false){
+      sece--;
+    }
+    
     // switch(page){
     //   case 1:
     //   menuitem++;
@@ -178,6 +191,7 @@ void Eventhandling(){
 
   if (buttonPress) {
     buttonPress = false;
+    run = !run;
     // switch(page){
     //   case 1:
     //   switch(menuitem){
