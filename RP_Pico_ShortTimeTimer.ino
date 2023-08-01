@@ -32,7 +32,12 @@ volatile uint8_t b = 0;
 volatile boolean right = false;
 volatile boolean left = false;
 bool buttonPress = false;
+bool buttonReleas = false;
+uint32_t buttonTimePressed = 0;
+uint32_t buttonTimeReleased = 0;
+uint32_t btntm = 0;
 
+int digit = 0;
 bool run = false;
 bool led_state = false;
 volatile int freq = 1720;
@@ -45,7 +50,7 @@ void setup() {
   // Rotary Button INPUT_PULLUP GPIO 11 !!
   pinMode(11, INPUT_PULLUP);
   //pinMode(11, INPUT);
-  attachInterrupt(11, buttonPressed, FALLING);
+  attachInterrupt(11, buttonPressed, CHANGE);
   // can be CHANGE or LOW or RISING or FALLING or HIGH
   // Rotary ChanA INPUT_PULLUP GPIO 6 !!
   pinMode(6, INPUT_PULLUP);
@@ -84,10 +89,26 @@ void rotaryMoved() {
   }
 }
 
-// ISR Button
+// ISR Button pressed
 void buttonPressed() {
   buttonPress = true;
+  //buttonTimePressed = millis();
+  led_state = true;
+  digitalWrite(LED_BUILTIN, led_state);
+  attachInterrupt(11, buttonReleased, RISING);
+  // can be CHANGE or LOW or RISING or FALLING or HIGH
 }
+
+// ISR Button released
+void buttonReleased() {
+  buttonReleas = true;
+  //buttonTimeReleased = millis();
+  led_state = false;
+  digitalWrite(LED_BUILTIN, led_state);
+  attachInterrupt(11, buttonPressed, FALLING);
+  // can be CHANGE or LOW or RISING or FALLING or HIGH
+}
+
 void loop() {
   // Events Checken
   Eventhandling();
@@ -95,16 +116,16 @@ void loop() {
   countdown();
   // Display
   display_Clock();
-
-}
+  }
+  
 
 void countdown() {
   if (run == true){
     act_time = millis();
     if (act_time - old_time >= delay_time) {
       old_time = act_time;
-      led_state = !led_state;
-      digitalWrite(LED_BUILTIN, led_state);
+      // led_state = !led_state;
+      // digitalWrite(LED_BUILTIN, led_state);
       //tone(8,freq,200);
       sece = sece - 1;  // secundeneiner runterzählen
       if (sece == -1) {
@@ -133,11 +154,19 @@ void display_Clock() {
   display.setTextSize(3);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(10, 0);
+  if (run == false && digit == 3){display.setTextColor(BLACK, WHITE);}
   display.print(minz);
+  display.setTextColor(SSD1306_WHITE);
+  if (run == false && digit == 2){display.setTextColor(BLACK, WHITE);}
   display.print(mine);
+  display.setTextColor(SSD1306_WHITE);
   display.print(":");
+  if (run == false && digit == 1){display.setTextColor(BLACK, WHITE);}
   display.print(secz);
+  display.setTextColor(SSD1306_WHITE);
+  if (run == false && digit == 0){display.setTextColor(BLACK, WHITE);}
   display.print(sece);
+  display.setTextColor(SSD1306_WHITE);
   display.display();
 }
 
@@ -150,7 +179,8 @@ void Eventhandling(){
     ccw++;
     inc++;
     if (run == false){
-      sece++;
+      digit--;
+      if (digit < 0) {digit = 3;}
     }
     
     // switch(page){
@@ -172,7 +202,8 @@ void Eventhandling(){
     cw++;
     inc--;
     if (run == false){
-      sece--;
+      digit++;
+      if (digit > 3) {digit = 0;}
     }
     
     // switch(page){
@@ -191,7 +222,9 @@ void Eventhandling(){
 
   if (buttonPress) {
     buttonPress = false;
+    tone(8,1000,50);
     run = !run;
+    digit = 0;
     // switch(page){
     //   case 1:
     //   switch(menuitem){
@@ -230,6 +263,17 @@ void Eventhandling(){
     //   if (menuitem4 == 3){page = 1;}
     //   break;
     //}
+  }
+
+  if (buttonReleas) {
+    buttonReleas = false;
+    btntm = buttonTimeReleased - buttonTimePressed;
+    Serial.print(F("Button pressed for : "));
+    Serial.print(F(btntm));
+    Serial.println(F(" secs"));
+    tone(8,1000,50);
+    run = !run;
+    digit = 0;
   }
 }
 
