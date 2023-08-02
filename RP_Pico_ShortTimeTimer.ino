@@ -22,7 +22,7 @@ int32_t mine = 9;  // minuteneiner
 int32_t minz = 5;  // minutenzehner
 
 // Rotaryencoder variables
-volatile boolean irDir = false;
+volatile boolean rtirDir = false;
 volatile byte ccw = 0;
 volatile byte cw = 0;
 volatile byte inc = 0;
@@ -31,8 +31,14 @@ volatile uint8_t a = 0;
 volatile uint8_t b = 0;
 volatile boolean right = false;
 volatile boolean left = false;
+// Button variables
+volatile boolean btirDir = false;
+bool bevt = false;
+volatile uint8_t c = 0;
 bool buttonPress = false;
 bool buttonReleas = false;
+bool shortpress = false;
+bool longpress = false;
 uint32_t buttonTimePressed = 0;
 uint32_t buttonTimeReleased = 0;
 uint32_t btntm = 0;
@@ -50,7 +56,7 @@ void setup() {
   // Rotary Button INPUT_PULLUP GPIO 11 !!
   pinMode(11, INPUT_PULLUP);
   //pinMode(11, INPUT);
-  attachInterrupt(11, buttonPressed, CHANGE);
+  attachInterrupt(11, buttonEvent, CHANGE);
   // can be CHANGE or LOW or RISING or FALLING or HIGH
   // Rotary ChanA INPUT_PULLUP GPIO 6 !!
   pinMode(6, INPUT_PULLUP);
@@ -80,33 +86,32 @@ void rotaryMoved() {
   } else {
     right = true;
   }
-  if (irDir) {
+  if (rtirDir) {
     attachInterrupt(6, rotaryMoved, RISING);
-    irDir = false;
+    rtirDir = false;
   } else {
     attachInterrupt(6, rotaryMoved, FALLING);
-    irDir = true;
+    rtirDir = true;
   }
 }
 
-// ISR Button pressed
-void buttonPressed() {
-  buttonPress = true;
-  //buttonTimePressed = millis();
-  led_state = true;
-  digitalWrite(LED_BUILTIN, led_state);
-  attachInterrupt(11, buttonReleased, RISING);
-  // can be CHANGE or LOW or RISING or FALLING or HIGH
-}
-
-// ISR Button released
-void buttonReleased() {
-  buttonReleas = true;
-  //buttonTimeReleased = millis();
-  led_state = false;
-  digitalWrite(LED_BUILTIN, led_state);
-  attachInterrupt(11, buttonPressed, FALLING);
-  // can be CHANGE or LOW or RISING or FALLING or HIGH
+// ISR Button
+// detection of falling and raising edge of Buttonpin
+void buttonEvent(){
+  bevt = true;
+  c = digitalRead(11);
+  if (c == false) {
+    buttonPress = true;
+  } else {
+    buttonReleas = true;
+  }  
+  if (btirDir) {
+    attachInterrupt(11, buttonEvent, RISING);
+    btirDir = false;
+  } else {
+    attachInterrupt(11, buttonEvent, FALLING);
+    btirDir = true;
+  }
 }
 
 void loop() {
@@ -116,8 +121,7 @@ void loop() {
   countdown();
   // Display
   display_Clock();
-  }
-  
+}
 
 void countdown() {
   if (run == true){
@@ -170,8 +174,6 @@ void display_Clock() {
   display.display();
 }
 
-
-
 void Eventhandling(){
   // Take action if a new command received from the encoder
   if (left) {
@@ -182,20 +184,7 @@ void Eventhandling(){
       digit--;
       if (digit < 0) {digit = 3;}
     }
-    
-    // switch(page){
-    //   case 1:
-    //   menuitem--;
-    //   if (menuitem == 0) { menuitem = 4; }
-    //   break;
-
-    //   case 4:
-    //   menuitem4--;
-    //   if (menuitem4 == 0) { menuitem4 = 3; }
-    //   if (menuitem4 == 1) { freq = freq+10;}
-    //   if (menuitem4 == 2) { freq = freq+10;}
-    //  } 
-   }
+  }
 
   if (right) {
     right = false;
@@ -205,75 +194,40 @@ void Eventhandling(){
       digit++;
       if (digit > 3) {digit = 0;}
     }
-    
-    // switch(page){
-    //   case 1:
-    //   menuitem++;
-    //   if (menuitem == 5) { menuitem = 1; }
-    //   break;
-
-    //   case 4:
-    //   menuitem4++;
-    //   if (menuitem4 == 4) { menuitem4 = 1; }      
-    //   if (menuitem4 == 1) { freq = freq-10; }
-    //   if (menuitem4 == 1) { freq = freq-10; }
-    // }
   }
 
   if (buttonPress) {
+    buttonTimePressed = millis();
     buttonPress = false;
     tone(8,1000,50);
-    run = !run;
-    digit = 0;
-    // switch(page){
-    //   case 1:
-    //   switch(menuitem){
-    //     case 1:
-    //     page = 4;
-    //     break;
-
-    //     case 2:
-    //     page = 2;
-    //     cw = 0;
-    //     ccw = 0;
-    //     inc = 0;
-    //     break;
-
-    //     case 3:
-    //     led_state = !led_state;
-    //     digitalWrite(LED_BUILTIN, led_state);
-    //     break;
-
-    //     case 4:
-    //     page = 3;
-    //     break;
-    //   } 
-
-    //   break;
-
-    //   case 2:
-    //   page = 1;
-    //   break;
-
-    //   case 3:
-    //   page = 1;
-    //   break;
-
-    //   case 4:
-    //   if (menuitem4 == 3){page = 1;}
-    //   break;
-    //}
   }
 
   if (buttonReleas) {
+    buttonTimeReleased = millis();
     buttonReleas = false;
     btntm = buttonTimeReleased - buttonTimePressed;
-    Serial.print(F("Button pressed for : "));
-    Serial.print(F(btntm));
-    Serial.println(F(" secs"));
-    tone(8,1000,50);
-    run = !run;
-    digit = 0;
+    if (btntm < 200) {
+      shortpress = true;
+      longpress = false;
+    }
+    else if(btntm > 250) {
+      shortpress = false;
+      longpress = true;
+    }
   }
+
+  if (shortpress){
+    shortpress = false;
+    led_state = !led_state;
+    digitalWrite(LED_BUILTIN, led_state);
+  }
+
+  if (longpress){
+    longpress = false;
+    digit = 0;
+    run = !run;
+  }
+
+
 }
 
