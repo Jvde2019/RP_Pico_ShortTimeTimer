@@ -31,6 +31,7 @@ volatile uint8_t a = 0;
 volatile uint8_t b = 0;
 volatile boolean right = false;
 volatile boolean left = false;
+
 // Button variables
 volatile boolean btirDir = false;
 bool bevt = false;
@@ -72,7 +73,6 @@ void setup() {
     for (;;)
       ;  // Don't proceed, loop forever
   }
-
 }
 
 // ISR Rotary
@@ -227,7 +227,5 @@ void Eventhandling(){
     digit = 0;
     run = !run;
   }
-
-
 }
 
