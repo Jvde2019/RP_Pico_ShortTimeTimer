@@ -22,27 +22,31 @@ int32_t mine = 9;  // minuteneiner
 int32_t minz = 5;  // minutenzehner
 
 // Rotaryencoder variables
+bool rm = false;
+volatile boolean right = false;
+volatile boolean left = false;
 volatile boolean rtirDir = false;
 volatile byte ccw = 0;
 volatile byte cw = 0;
 volatile byte inc = 0;
-bool rm = false;
 volatile uint8_t a = 0;
 volatile uint8_t b = 0;
-volatile boolean right = false;
-volatile boolean left = false;
+
 
 // Button variables
 volatile boolean btirDir = false;
 bool bevt = false;
-volatile uint8_t c = 0;
 bool buttonPress = false;
 bool buttonReleas = false;
 bool shortpress = false;
 bool longpress = false;
+volatile uint8_t c = 0;
 uint32_t buttonTimePressed = 0;
 uint32_t buttonTimeReleased = 0;
 uint32_t btntm = 0;
+
+// Statecontrol
+uint8_t state = 1;
 
 int digit = 0;
 bool run = false;
@@ -121,6 +125,8 @@ void loop() {
   countdown();
   // Display
   display_Clock();
+  // State control
+  statecontrol();
 }
 
 void countdown() {
@@ -128,8 +134,6 @@ void countdown() {
     act_time = millis();
     if (act_time - old_time >= delay_time) {
       old_time = act_time;
-      // led_state = !led_state;
-      // digitalWrite(LED_BUILTIN, led_state);
       //tone(8,freq,200);
       sece = sece - 1;  // secundeneiner runterzählen
       if (sece == -1) {
@@ -176,25 +180,25 @@ void display_Clock() {
 
 void Eventhandling(){
   // Take action if a new command received from the encoder
-  if (left) {
-    left = false;
-    ccw++;
-    inc++;
-    if (run == false){
-      digit--;
-      if (digit < 0) {digit = 3;}
-    }
-  }
+  // if (left) {
+  //   left = false;
+  //   ccw++;
+  //   inc++;
+  //   if (run == false){
+  //     digit--;
+  //     if (digit < 0) {digit = 3;}
+  //   }
+  // }
 
-  if (right) {
-    right = false;
-    cw++;
-    inc--;
-    if (run == false){
-      digit++;
-      if (digit > 3) {digit = 0;}
-    }
-  }
+  // if (right) {
+  //   right = false;
+  //   cw++;
+  //   inc--;
+  //   if (run == false){
+  //     digit++;
+  //     if (digit > 3) {digit = 0;}
+  //   }
+  // }
 
   if (buttonPress) {
     buttonTimePressed = millis();
@@ -216,16 +220,104 @@ void Eventhandling(){
     }
   }
 
-  if (shortpress){
-    shortpress = false;
-    led_state = !led_state;
-    digitalWrite(LED_BUILTIN, led_state);
-  }
+  // if (shortpress){
+  //   shortpress = false;
+  //   led_state = !led_state;
+  //   digitalWrite(LED_BUILTIN, led_state);
+  // }
 
-  if (longpress){
-    longpress = false;
-    digit = 0;
-    run = !run;
-  }
+  // if (longpress){
+  //   longpress = false;
+  //   digit = 0;
+  //   run = !run;
+  // }
 }
 
+void statecontrol(){
+  switch(state){
+    case 1:  // Clock stopped wait for Setting
+    if (longpress){
+      state = 2;
+      longpress = false;
+      digit = 0;
+      Serial.println(state);
+    } 
+    break;
+    case 2:  // Clock stopped Setting digit 0  
+    if (shortpress){
+      state = 3;
+      shortpress = false;
+      Serial.println(state);
+    }
+    break;
+    case 3:  // Clock stopped Setting sece
+    if (right) {
+      right = false;
+      sece--;  // secundeneiner runterzählen
+      if (sece == -1) {sece = 9;} 
+    }
+    if (shortpress){
+      state = 4;
+      shortpress = false;
+      digit = 1;
+      Serial.println(state);      
+    }  
+    break;
+    case 4:  // Clock stopped Setting secz
+    if (right) {
+      right = false;
+      secz--;  // secundenzehner runterzählen
+      if (secz < 0) {secz = 5; }
+    }     
+    if (shortpress){
+      state = 5;
+      shortpress = false;
+      digit = 2;
+      Serial.println(state);      
+    }  
+    break;
+    case 5:  // Clock stopped Setting mine
+    if (right) {
+      right = false;
+      mine--;
+      if (mine < 0) {mine = 9;}  
+    }          
+    if (shortpress){
+      state = 6;
+      shortpress = false;
+      digit = 3;
+      Serial.println(state);      
+    }    
+    break;
+    case 6:  // Clock stopped Setting minz
+    if (right) {
+      right = false;
+      minz--;
+      if (minz < 0) {minz = 5;} 
+    }           
+    if (shortpress){
+      state = 7;
+      shortpress = false;
+      digit = 4;
+      Serial.println(state);      
+    }    
+    break;
+    case 7:  // Clock running wait for Setting
+    run = true;
+    if (longpress){
+      state = 1;
+      run = false;
+    }
+    if (sece == 0 && secz == 0  && mine == 0 && minz == 0){
+      run = false;
+      tone(8,1000,50);
+
+    }
+    break;
+    case 8:  // Clock stopped wait for Setting
+    break;
+    case 9:  // Clock stopped wait for Setting
+    break;
+  }
+   
+}
