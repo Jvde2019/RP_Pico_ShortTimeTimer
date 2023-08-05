@@ -13,7 +13,7 @@
 #define SCREEN_ADDRESS 0x3C  ///< See datasheet for Address; 0x3C
 
 // Clockvariables
-uint32_t delay_time = 1000;  // 1000ms
+uint32_t delta_time = 1000;  // 1000ms
 uint32_t old_time;
 uint32_t act_time;
 int32_t sece = 9;  // secundeneiner
@@ -22,36 +22,38 @@ int32_t mine = 9;  // minuteneiner
 int32_t minz = 5;  // minutenzehner
 
 // Rotaryencoder variables
-bool rm = false;
-volatile boolean right = false;
-volatile boolean left = false;
-volatile boolean rtirDir = false;
-volatile byte ccw = 0;
-volatile byte cw = 0;
-volatile byte inc = 0;
-volatile uint8_t a = 0;
-volatile uint8_t b = 0;
+bool rt_mov = false;
+volatile boolean rt_right = false;
+volatile boolean rt_left = false;
+volatile boolean rt_irdir = false;
+volatile byte rt_ccw = 0;
+volatile byte rt_cw = 0;
+volatile byte rt_inc = 0;
+volatile uint8_t rt_a = 0;
+volatile uint8_t rt_b = 0;
 
 
 // Button variables
-volatile boolean btirDir = false;
-bool bevt = false;
-bool buttonPress = false;
-bool buttonReleas = false;
-bool shortpress = false;
-bool longpress = false;
-volatile uint8_t c = 0;
-uint32_t buttonTimePressed = 0;
-uint32_t buttonTimeReleased = 0;
-uint32_t btntm = 0;
+bool bt_mov = false;
+volatile boolean bt_irDir = false;
+bool bt_press = false;
+bool bt_releas = false;
+bool bt_shortpress = false;
+bool bt_longpress = false;
+volatile uint8_t bt_c = 0;
+uint32_t bt_timepressed = 0;
+uint32_t bt_timereleased = 0;
+uint32_t bt_deltatime = 0;
 
-// Statecontrol
+// Statecontrol variables
 uint8_t state = 1;
-
-int digit = 0;
 bool run = false;
+
+int digit = 4;
 bool led_state = false;
+
 volatile int freq = 1720;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 void setup() {
@@ -82,39 +84,39 @@ void setup() {
 // ISR Rotary
 void rotaryMoved() {
   // ISR for DDM427 See Datasheet https://hopt-schuler.com/sites/default/files/medien/dokumente/2022-11/miniature_2bit_encoder_427_2022.pdf
-  rm = true;
-  a = digitalRead(6);
-  b = digitalRead(7);
-  if (a == b) {
-    left = true;
+  rt_mov = true;
+  rt_a = digitalRead(6);
+  rt_b = digitalRead(7);
+  if (rt_a == rt_b) {
+    rt_left = true;
   } else {
-    right = true;
+    rt_right = true;
   }
-  if (rtirDir) {
+  if (rt_irdir) {
     attachInterrupt(6, rotaryMoved, RISING);
-    rtirDir = false;
+    rt_irdir = false;
   } else {
     attachInterrupt(6, rotaryMoved, FALLING);
-    rtirDir = true;
+    rt_irdir = true;
   }
 }
 
 // ISR Button
 // detection of falling and raising edge of Buttonpin
 void buttonEvent(){
-  bevt = true;
-  c = digitalRead(11);
-  if (c == false) {
-    buttonPress = true;
+  bt_mov = true;
+  bt_c = digitalRead(11);
+  if (bt_c == false) {
+    bt_press = true;
   } else {
-    buttonReleas = true;
+    bt_releas = true;
   }  
-  if (btirDir) {
+  if (bt_irDir) {
     attachInterrupt(11, buttonEvent, RISING);
-    btirDir = false;
+    bt_irDir = false;
   } else {
     attachInterrupt(11, buttonEvent, FALLING);
-    btirDir = true;
+    bt_irDir = true;
   }
 }
 
@@ -132,20 +134,20 @@ void loop() {
 void countdown() {
   if (run == true){
     act_time = millis();
-    if (act_time - old_time >= delay_time) {
+    if (act_time - old_time >= delta_time){
       old_time = act_time;
       //tone(8,freq,200);
-      sece = sece - 1;  // secundeneiner runterzählen
+      sece --;           // secundeneiner runterzählen
       if (sece == -1) {
         sece = 9;
-        secz = secz - 1;  // secundenzehner runterzählen
+        secz --;         // secundenzehner runterzählen
          if (secz < 0) {
            secz = 5;
            sece = 9;
-           mine = mine - 1;
+           mine --;
            if (mine < 0) {
              mine = 9;
-             minz = minz - 1;
+             minz --;
              if (minz < 0) {
                minz = 5;
              }
@@ -162,149 +164,138 @@ void display_Clock() {
   display.setTextSize(3);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(10, 0);
-  if (run == false && digit == 3){display.setTextColor(BLACK, WHITE);}
+  if (digit == 3){display.setTextColor(BLACK, WHITE);}
   display.print(minz);
   display.setTextColor(SSD1306_WHITE);
-  if (run == false && digit == 2){display.setTextColor(BLACK, WHITE);}
+  if (digit == 2){display.setTextColor(BLACK, WHITE);}
   display.print(mine);
   display.setTextColor(SSD1306_WHITE);
   display.print(":");
-  if (run == false && digit == 1){display.setTextColor(BLACK, WHITE);}
+  if (digit == 1){display.setTextColor(BLACK, WHITE);}
   display.print(secz);
   display.setTextColor(SSD1306_WHITE);
-  if (run == false && digit == 0){display.setTextColor(BLACK, WHITE);}
+  if (digit == 0){display.setTextColor(BLACK, WHITE);}
   display.print(sece);
   display.setTextColor(SSD1306_WHITE);
   display.display();
 }
 
 void Eventhandling(){
-  // Take action if a new command received from the encoder
-  // if (left) {
-  //   left = false;
-  //   ccw++;
-  //   inc++;
-  //   if (run == false){
-  //     digit--;
-  //     if (digit < 0) {digit = 3;}
-  //   }
-  // }
-
-  // if (right) {
-  //   right = false;
-  //   cw++;
-  //   inc--;
-  //   if (run == false){
-  //     digit++;
-  //     if (digit > 3) {digit = 0;}
-  //   }
-  // }
-
-  if (buttonPress) {
-    buttonTimePressed = millis();
-    buttonPress = false;
+  // looks for actions detected by ISR
+  // in case of btpress time saved
+  if (bt_press) {
+    bt_timepressed = millis();
+    bt_press = false;
     tone(8,1000,50);
   }
-
-  if (buttonReleas) {
-    buttonTimeReleased = millis();
-    buttonReleas = false;
-    btntm = buttonTimeReleased - buttonTimePressed;
-    if (btntm < 200) {
-      shortpress = true;
-      longpress = false;
+  
+  // in case of bt releas delta T is calculated 
+  // short- and longpress are determinated
+  if (bt_releas) {
+    bt_timereleased = millis();
+    bt_releas = false;
+    bt_deltatime = bt_timereleased - bt_timepressed;
+    if (bt_deltatime < 200) {
+      bt_shortpress = true;
+      bt_longpress = false;
     }
-    else if(btntm > 250) {
-      shortpress = false;
-      longpress = true;
+    else if(bt_deltatime > 250) {
+      bt_shortpress = false;
+      bt_longpress = true;
     }
   }
-
-  // if (shortpress){
-  //   shortpress = false;
-  //   led_state = !led_state;
-  //   digitalWrite(LED_BUILTIN, led_state);
-  // }
-
-  // if (longpress){
-  //   longpress = false;
-  //   digit = 0;
-  //   run = !run;
-  // }
 }
 
 void statecontrol(){
   switch(state){
     case 1:  // Clock stopped wait for Setting
-    if (longpress){
+    if (bt_longpress){
       state = 2;
-      longpress = false;
+      bt_longpress = false;
       digit = 0;
       Serial.println(state);
     } 
     break;
-    case 2:  // Clock stopped Setting digit 0  
-    if (shortpress){
-      state = 3;
-      shortpress = false;
-      Serial.println(state);
-    }
-    break;
-    case 3:  // Clock stopped Setting sece
-    if (right) {
-      right = false;
-      sece--;  // secundeneiner runterzählen
+
+    case 2:  // Clock stopped Setting sece digit 0 
+    if (rt_right) {
+      rt_right = false;
+      sece --;  // secundeneiner runterzählen
       if (sece == -1) {sece = 9;} 
     }
-    if (shortpress){
-      state = 4;
-      shortpress = false;
+    if (rt_left) {
+      rt_left = false;
+      sece ++;  // secundeneiner hochzählen
+      if (sece == 10) {sece = 0;} 
+    }
+    if (bt_shortpress){
+      state = 3;
+      bt_shortpress = false;
       digit = 1;
       Serial.println(state);      
     }  
     break;
-    case 4:  // Clock stopped Setting secz
-    if (right) {
-      right = false;
-      secz--;  // secundenzehner runterzählen
+
+    case 3:  // Clock stopped Setting secz digit 1
+    if (rt_right) {
+      rt_right = false;
+      secz --;  // secundenzehner runterzählen
       if (secz < 0) {secz = 5; }
+    }
+    if (rt_left) {
+      rt_left = false;
+      secz ++;  // secundenzehner hochzählen
+      if (secz == 6) {secz = 0;} 
     }     
-    if (shortpress){
-      state = 5;
-      shortpress = false;
+    if (bt_shortpress){
+      state = 4;
+      bt_shortpress = false;
       digit = 2;
       Serial.println(state);      
     }  
     break;
-    case 5:  // Clock stopped Setting mine
-    if (right) {
-      right = false;
-      mine--;
+
+    case 4:  // Clock stopped Setting mine digit 2
+    if (rt_right) {
+      rt_right = false;
+      mine --;
       if (mine < 0) {mine = 9;}  
-    }          
-    if (shortpress){
-      state = 6;
-      shortpress = false;
+    } 
+    if (rt_left) {
+      rt_left = false;
+      mine ++;  // secundeneiner hochzählen
+      if (mine == 10) {mine = 0;} 
+    }             
+    if (bt_shortpress){
+      state = 5;
+      bt_shortpress = false;
       digit = 3;
       Serial.println(state);      
     }    
     break;
-    case 6:  // Clock stopped Setting minz
-    if (right) {
-      right = false;
-      minz--;
+
+    case 5:  // Clock stopped Setting minz digit 3
+    if (rt_right) {
+      rt_right = false;
+      minz --;
       if (minz < 0) {minz = 5;} 
-    }           
-    if (shortpress){
-      state = 7;
-      shortpress = false;
+    }   
+    if (rt_left) {
+      rt_left = false;
+      minz ++;  // secundeneiner hochzählen
+      if (minz == 6) {minz = 0;} 
+    }          
+    if (bt_shortpress){
+      state = 6;
+      bt_shortpress = false;
       digit = 4;
       Serial.println(state);      
     }    
     break;
-    case 7:  // Clock running wait for Setting
+
+    case 6:  // Clock running wait for Setting
     run = true;
-    if (longpress){
+    if (bt_longpress){
       state = 1;
       run = false;
     }
@@ -313,11 +304,6 @@ void statecontrol(){
       tone(8,1000,50);
 
     }
-    break;
-    case 8:  // Clock stopped wait for Setting
-    break;
-    case 9:  // Clock stopped wait for Setting
-    break;
   }
    
 }
