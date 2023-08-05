@@ -1,6 +1,15 @@
 # RP_Pico_ShortTimeTimer
 Because of defectice mechanical Timer some replacement musst be created :-)
 
+# Description
+* CPU PiPico
+* Display  OLED SSD1306 based
+* Control Rotaryencoder 
+# Funktion
+initially the display shows 59:59 long buttonpress inverts lsb to indicate is editibelity with rotary encoder,
+shortpress shifts this to the next left digit if Lsb ist adjusted shortpress starts timer if 00:00 is reached the buzzer tone activated,
+shortpress stopps alarm, @ any time the longpress is taken starts setting.
+
 # ToDo
 - [ ] finish code
 - [ ] debug code
