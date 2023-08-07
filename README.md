@@ -7,8 +7,8 @@ Because of defectice mechanical Timer some replacement musst be created :-)
 * Control Rotaryencoder 
 # Funktion
 initially the display shows 59:59 long buttonpress inverts lsb to indicate is editibelity with rotary encoder,
-shortpress shifts this to the next left digit if Lsb ist adjusted shortpress starts timer if 00:00 is reached the buzzer tone activated,
-shortpress stopps alarm, @ any time the longpress is taken starts setting.
+shortpress shifts this to the next left digit, if Lsb ist adjusted shortpress starts the timer,
+if 00:00 is reached the buzzer tone activated, shortpress stopps alarm, every time the longpress is taken starts setting.
 
 # ToDo
 - [ ] finish code
